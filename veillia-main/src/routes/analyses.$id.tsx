@@ -17,209 +17,166 @@ import {
   Clock,
   ChevronRight,
   TrendingUp,
-  AlertTriangle,
   HelpCircle,
-  Cpu,
-  Shield,
-  Building,
+  AlertCircle,
+  Loader2,
+  ExternalLink,
+  Layers,
+  CheckCircle2,
+  FileSearch,
+  Globe,
+  Tag,
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { useWatchlists } from "@/hooks/use-watchlists";
+import { useReport } from "@/hooks/use-report";
+import { useLanguage } from "@/hooks/use-language";
 import { toast } from "sonner";
+import { getArticleById, getArticlesByCategory, chatWithArticle, type Article } from "@/lib/api";
+import { getArticleImage } from "@/lib/article-image";
 
 export const Route = createFileRoute("/analyses/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `${decodeURIComponent(params.id)} — Analyse VeillIA` },
-      { name: "description", content: "Analyse stratégique détaillée par l'intelligence artificielle." },
+      { title: `Rapport d'analyse #${params.id} — VeillIA` },
+      { name: "description", content: "Rapport d'analyse stratégique détaillé par l'intelligence artificielle VeillIA." },
     ],
   }),
   component: AnalysisPage,
 });
 
-// Rich mock database of analyses
-const ARTICLE_ANALYSES: Record<
-  string,
-  {
-    title: string;
-    tag: string;
-    source: string;
-    date: string;
-    readTime: number;
-    importance: number;
-    sentiment: "Positif" | "Neutre" | "Négatif";
-    risk: "Faible" | "Moyen" | "Élevé" | "Critique";
-    summary: string;
-    fullContent: string;
-    whyItMatters: Record<string, string>; // Tailored for student, engineer, entrepreneur, etc.
-    whyRecommended: string;
-    takeaways: string[];
-    qaReplies: { question: string; answer: string }[];
-    defaultReply: string;
+function formatDate(dateStr: string | null, language: string): string {
+  if (!dateStr) return "Date non spécifiée";
+  try {
+    const locale = language === "العربية" || language === "Darija" ? "ar" : language === "English" ? "en-GB" : "fr-FR";
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(dateStr));
+  } catch {
+    return dateStr;
   }
-> = {
-  "gpt-5": {
-    title: "OpenAI annonce GPT-5 Turbo avec contexte 2M tokens",
-    tag: "IA Générative",
-    source: "OpenAI Blog",
-    date: "Il y a 1h",
-    readTime: 4,
-    importance: 96,
-    sentiment: "Positif",
-    risk: "Faible",
-    summary: "Refonte de l'architecture, latence divisée par 3, tarifs API en baisse de 40%. Mise en production immédiate de ce modèle fondamental.",
-    fullContent: "La nouvelle architecture hybride de GPT-5 Turbo combine un décodage à faible latence et un système d'attention optimisé, permettant de supporter des contextes massifs allant jusqu'à 2 millions de tokens sans dégradation de performance. Les prix des tokens d'entrée baissent de 40%, tandis que les tokens de sortie baissent de 45%, posant une pression concurrentielle sans précédent sur les modèles de taille moyenne d'Anthropic et Google. Le modèle s'intègre nativement avec les standards MCP (Model Context Protocol) pour une interaction fluide avec les environnements locaux.",
-    whyItMatters: {
-      "Ingénieur": "Cette baisse de prix de 40% et la latence divisée par 3 rendent viables des architectures multi-agents complexes et l'analyse de codebases entiers directement en mémoire contextuelle.",
-      "Entrepreneur": "Vos coûts opérationnels d'API vont être divisés par deux, libérant de la marge pour vos fonctionnalités à valeur ajoutée ou vous permettant d'attaquer des segments à fort volume de tokens.",
-      "Investisseur": "Cela renforce la position de monopole d'OpenAI et exerce une pression immense sur les startups de LLM propriétaires. L'avantage se déplace vers les couches d'application et de tooling.",
-      "Responsable innovation": "Une opportunité immédiate de revoir vos POCs d'IA internes : les tâches qui nécessitaient des pipelines RAG complexes peuvent désormais être traitées par simple injection contextuelle.",
-      "Student": "C'est le moment d'étudier les nouvelles architectures d'agents autonomes rendues possibles par ce modèle de 2M tokens contextuels.",
-      "default": "Cette mise à jour redéfinit le coût de l'inférence IA et élargit considérablement le champ d'application des technologies génératives dans vos tâches courantes."
-    },
-    whyRecommended: "Tracké via vos mots-clés suivis 'OpenAI' et vos intérêts en 'IA Générative'.",
-    takeaways: [
-      "Coût d'inférence en baisse de 40% restructurant les business plans LLM.",
-      "Contexte de 2M tokens permettant le traitement de livres ou corpus de code entiers.",
-      "Standardisation autour des protocoles MCP pour agents autonomes."
-    ],
-    qaReplies: [
-      {
-        question: "Qu'est-ce que cela change pour le RAG ?",
-        answer: "Avec 2M de tokens, le RAG (Retrieval-Augmented Generation) reste pertinent pour les très grandes bases documentaires (>10 Go), mais pour les dossiers de taille moyenne (manuels, rapports annuels, codebases), vous pouvez injecter directement la donnée brute dans le contexte, éliminant les étapes de chunking et d'indexation vectorielle."
-      },
-      {
-        question: "Les prix sont-ils stables ?",
-        answer: "Oui, OpenAI applique cette tarification immédiatement sur l'API publique. C'est une baisse durable visant à dissuader les développeurs de migrer vers des modèles Open Source comme Llama 3."
-      }
-    ],
-    defaultReply: "Ce modèle GPT-5 Turbo offre des opportunités majeures pour le traitement de volumes textuels denses et les processus multi-agents avec une latence ultra-faible."
-  },
-  "mistral": {
-    title: "Mistral AI lève 600M€ — valorisation 6Mds",
-    tag: "Startups",
-    source: "Les Echos",
-    date: "Il y a 22 min",
-    readTime: 3,
-    importance: 92,
-    sentiment: "Positif",
-    risk: "Faible",
-    summary: "Levée de fonds record pour le champion européen de l'IA souveraine. Cette enveloppe servira à l'extension des infrastructures de calcul et à l'embauche de chercheurs de classe mondiale.",
-    fullContent: "Mistral AI consolide sa position de leader européen avec une levée de 600 millions d'euros menée par des investisseurs internationaux et soutenue par des acteurs stratégiques européens. Cette valorisation à 6 milliards d'euros reflète la confiance du marché dans leur stratégie open-weight et leur positionnement axé sur la souveraineté des données et l'efficacité de calcul (modèles frugaux).",
-    whyItMatters: {
-      "Investisseur": "Une validation de la thèse selon laquelle des géants non-américains peuvent émerger sur le hardware et l'IA de fondation en se focalisant sur le marché B2B souverain.",
-      "Entrepreneur": "Renforcement des garanties de pérennité des modèles Mistral, vous assurant une alternative solide et hébergée en Europe face aux fournisseurs américains.",
-      "Ingénieur": "De nouveaux modèles très performants vont être entraînés et rendus open-source/open-weight prochainement. Attendez-vous à des modèles spécialisés pour le codage et le raisonnement logique.",
-      "Responsable innovation": "Cela sécurise votre stratégie de déploiement d'IA sur site (on-premise) en vous appuyant sur des modèles européens fiables à long terme.",
-      "default": "Cette levée majeure ancre l'écosystème IA européen et garantit une alternative compétitive à l'offre américaine."
-    },
-    whyRecommended: "Match avec votre watchlist Entreprises ('Mistral AI') et vos intérêts pour le 'Souveraineté' et 'Startups'.",
-    takeaways: [
-      "Extension des capacités de calcul de Mistral AI en Europe.",
-      "Valorisation record de 6 milliards d'euros montrant la robustesse du secteur.",
-      "Pérennité assurée pour les alternatives IA souveraines."
-    ],
-    qaReplies: [
-      {
-        question: "Quels sont les investisseurs majeurs ?",
-        answer: "Le tour de table a été mené par General Catalyst avec la participation d'investisseurs historiques comme Lightspeed Venture Partners, ainsi que de partenaires industriels européens."
-      },
-      {
-        question: "Les modèles resteront-ils open-source ?",
-        answer: "Mistral maintient sa double approche : des modèles open-weight hautement compétitifs (Mistral-7B, Mixtral) et des modèles commerciaux plus larges via leur plateforme La Plateforme."
-      }
-    ],
-    defaultReply: "Cette levée permet à Mistral d'investir massivement dans ses équipes de recherche et son infrastructure de calcul afin de concurrencer OpenAI."
-  },
-  "regulation": {
-    title: "L'UE finalise les obligations d'audit pour modèles >70B paramètres",
-    tag: "Régulation",
-    source: "Commission Européenne",
-    date: "Il y a 3h",
-    readTime: 6,
-    importance: 89,
-    sentiment: "Neutre",
-    risk: "Élevé",
-    summary: "L'AI Act entre dans sa phase opérationnelle. Les modèles dépassant 70 milliards de paramètres seront soumis à des audits de sécurité indépendants et annuels dès 2027.",
-    fullContent: "Les nouvelles directives imposent aux fournisseurs de modèles de fondation à usage général avec des capacités systémiques de déclarer leur consommation énergétique, de documenter leurs sources de données d'entraînement et de subir des tests d'évaluation des risques par des laboratoires tiers agréés. Tout manquement entraînera des amendes administratives substantielles.",
-    whyItMatters: {
-      "Responsable innovation": "Vous devez cartographier les LLM de taille supérieure à 70B intégrés dans vos outils afin de vous assurer de leur conformité d'ici fin 2026.",
-      "Entrepreneur": "Vos fournisseurs de modèles vont devoir répercuter le coût de ces audits sur le prix des APIs. Prévoyez une légère hausse de tarification pour les modèles de pointe hébergés en Europe.",
-      "Chercheur": "Cela restreint l'accès libre à certains checkpoints de modèles open-weight de grande taille, les labos devant valider la conformité avant publication.",
-      "default": "Un cadre juridique strict qui augmente la conformité mais structure les responsabilités en cas d'incident IA."
-    },
-    whyRecommended: "Recommandé suite à la présence du tag 'AI Act' dans vos mots-clés surveillés.",
-    takeaways: [
-      "Audits annuels obligatoires dès 2027 pour les modèles >70B.",
-      "Obligation de transparence sur les données d'entraînement (Copyright).",
-      "Amendes allant jusqu'à 7% du chiffre d'affaires mondial."
-    ],
-    qaReplies: [
-      {
-        question: "Quels modèles sont concernés aujourd'hui ?",
-        answer: "Les modèles comme Llama 3 70B/400B, Claude 3 Opus, et GPT-4 entrent directement sous cette réglementation."
-      }
-    ],
-    defaultReply: "Ce cadre réglementaire vise à prévenir les risques systémiques tout en imposant de nouvelles normes de conformité."
-  }
-};
+}
 
-export function AnalysisPage() {
+function AnalysisPage() {
   const params = Route.useParams();
-  const decodedId = decodeURIComponent(params.id).toLowerCase();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, accessToken } = useAuth();
   const { lists, addItem, create } = useWatchlists();
+  const { language, t } = useLanguage();
+  const { toggleArticle, isArticleInReport } = useReport();
 
-  // Find corresponding mock analysis or fallback
-  const analysisKey = Object.keys(ARTICLE_ANALYSES).find((k) =>
-    decodedId.includes(k) || ARTICLE_ANALYSES[k].title.toLowerCase().includes(decodedId)
-  ) || "gpt-5";
+  // Article fetch state
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const analysis = ARTICLE_ANALYSES[analysisKey];
+  // Related articles
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
 
   // Action states
   const [saved, setSaved] = useState(false);
   const [alertCreated, setAlertCreated] = useState(false);
-  const [inReport, setInReport] = useState(false);
   const [showWL, setShowWL] = useState(false);
   const [creatingWL, setCreatingWL] = useState(false);
   const [newWLName, setNewWLName] = useState("");
 
   // Q&A Chat states
-  const [messages, setMessages] = useState<{ sender: "user" | "ai"; text: string }[]>([
-    {
-      sender: "ai",
-      text: `Bonjour ${isAuthenticated ? user?.name : "Visiteur"}. Je suis l'assistant IA VeillIA. Posez-moi vos questions stratégiques concernant cet article.`,
-    },
-  ]);
+  const [messages, setMessages] = useState<{ sender: "user" | "ai"; text: string; notFound?: boolean }[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch article by numeric ID
+  useEffect(() => {
+    const id = Number(params.id);
+    if (isNaN(id) || id <= 0) {
+      setError(t("analysis_not_found"));
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    getArticleById(id)
+      .then((data) => {
+        setArticle(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(t("analysis_error"));
+        setLoading(false);
+      });
+  }, [params.id]);
+
+  // Fetch related articles
+  useEffect(() => {
+    if (!article?.category) return;
+    const CATEGORY_TO_SLUG: Record<string, string> = {
+      startup: "startups",
+      tendance: "tendances",
+      produit_ia: "produits",
+      reglementation: "regulation",
+      evenement: "evenements",
+      recherche: "recherche",
+      ecosysteme: "ecosysteme",
+    };
+    const slug = CATEGORY_TO_SLUG[article.category] || article.category;
+    getArticlesByCategory(slug)
+      .then((articles) => {
+        const filtered = articles.filter((a) => a.id !== article.id).slice(0, 3);
+        setRelatedArticles(filtered);
+      })
+      .catch(() => {});
+  }, [article?.category, article?.id]);
+
+  // Chatbot greeting
+  useEffect(() => {
+    if (!article) return;
+    const shortTitle = article.title.length > 60 ? article.title.slice(0, 57) + "…" : article.title;
+    const greeting =
+      language === "English"
+        ? `Hello ${isAuthenticated ? user?.name : "Visitor"}. I am the VeillIA AI assistant. Ask me any question about "${shortTitle}".`
+        : language === "العربية"
+        ? `مرحباً ${isAuthenticated ? user?.name : "زائر"}. أنا مساعد VeillIA الذكي. اطرح علي أي سؤال حول "${shortTitle}".`
+        : language === "Darija"
+        ? `مرحبا ${isAuthenticated ? user?.name : "ضيف"}. أنا مساعد VeillIA الذكي. اسأل على "${shortTitle}".`
+        : `Bonjour ${isAuthenticated ? user?.name : "Visiteur"}. Je suis l'assistant VeillIA. Posez-moi vos questions sur "${shortTitle}".`;
+    setMessages([{ sender: "ai", text: greeting }]);
+  }, [language, isAuthenticated, user?.name, article]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Actions
   const handleSave = () => {
     setSaved(!saved);
-    toast.success(saved ? "Article retiré des favoris" : "Article enregistré dans vos favoris");
+    toast.success(saved ? t("analysis_save") : t("analysis_saved"));
   };
 
   const handleAlert = () => {
     setAlertCreated(!alertCreated);
-    toast.success(alertCreated ? "Alerte désactivée" : "Alerte configurée en temps réel pour ce sujet");
+    toast.success(alertCreated ? t("analysis_alert") : t("analysis_alert_created"));
   };
 
   const handleAddToReport = () => {
-    setInReport(!inReport);
-    toast.success(inReport ? "Retiré du rapport IA" : "Ajouté à votre note de synthèse IA");
+    if (!article) return;
+    const idStr = String(article.id);
+    toggleArticle({
+      id: idStr,
+      title: article.title,
+      source: article.source || "VeillIA",
+      date: formatDate(article.published_at, language),
+      summary: article.summary || "",
+      category: article.category || "Général",
+    });
+    toast.success(
+      isArticleInReport(idStr) ? t("analysis_add_report") : t("analysis_added_report"),
+    );
   };
 
   const handleAddToWatchlist = (wlId: string, wlName: string) => {
-    addItem(wlId, analysis.title);
+    if (!article) return;
+    addItem(wlId, article.title);
     setShowWL(false);
-    toast.success(`Article ajouté à la watchlist "${wlName}"`);
+    toast.success(`${t("analysis_add_watchlist")}: "${wlName}"`);
   };
 
   const handleCreateWatchlist = () => {
@@ -228,169 +185,300 @@ export function AnalysisPage() {
     create(name, "keywords");
     setCreatingWL(false);
     setNewWLName("");
-    toast.success(`Watchlist "${name}" créée avec succès`);
+    toast.success(`${name}`);
   };
 
-  const handleSendQuestion = (e: React.FormEvent) => {
+  const handleSendQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || chatLoading || !article) return;
 
     const userText = chatInput.trim();
     setMessages((prev) => [...prev, { sender: "user", text: userText }]);
     setChatInput("");
+    setChatLoading(true);
 
-    // Simulate AI thinking and replying
-    setTimeout(() => {
-      const match = analysis.qaReplies.find(
-        (qa) =>
-          userText.toLowerCase().includes(qa.question.toLowerCase()) ||
-          qa.question.toLowerCase().includes(userText.toLowerCase())
+    try {
+      const response = await chatWithArticle(
+        accessToken || "",
+        article.id,
+        userText,
+        language,
       );
-      const replyText = match ? match.answer : analysis.defaultReply;
-      setMessages((prev) => [...prev, { sender: "ai", text: replyText }]);
-    }, 850);
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: response.answer, notFound: !response.found_in_article },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: t("analysis_chat_error"), notFound: true },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
-  // Get user role for customized content
-  const userRole = user?.jobTitle || "default";
-  const tailoredImpact = analysis.whyItMatters[userRole] || analysis.whyItMatters["default"];
+  if (loading) {
+    return (
+      <SiteLayout>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+            <p className="mt-3 text-sm text-muted-foreground">{t("analysis_loading")}</p>
+          </div>
+        </div>
+      </SiteLayout>
+    );
+  }
+
+  if (error || !article) {
+    return (
+      <SiteLayout>
+        <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive" />
+          <h1 className="text-2xl font-bold">{error || t("analysis_not_found")}</h1>
+          <p className="text-sm text-muted-foreground max-w-md">
+            {t("analysis_error")}
+          </p>
+          <Link
+            to={isAuthenticated ? "/dashboard" : "/"}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-brand hover:opacity-95"
+          >
+            <ArrowLeft className="h-4 w-4" /> {t("analysis_back")}
+          </Link>
+        </div>
+      </SiteLayout>
+    );
+  }
+
+  const articleIdStr = String(article.id);
+  const inReport = isArticleInReport(articleIdStr);
+  const imageUrl = getArticleImage(article);
+
+  // Extract key takeaways or sentences for Key Points section
+  const summarySentences = (article.summary || "")
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => s.trim().length > 15);
 
   return (
     <SiteLayout>
-      {/* Top Navigation */}
+      {/* Top Bar Navigation */}
       <div className="border-b border-border bg-card/30 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
             to={isAuthenticated ? "/dashboard" : "/"}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition"
           >
-            <ArrowLeft className="h-4 w-4" /> Retour
+            <ArrowLeft className="h-4 w-4" /> {t("analysis_back")}
           </Link>
-          <div className="inline-flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Source: <strong>{analysis.source}</strong></span>
-            <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground">{analysis.date}</span>
+          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Rapport d'Analyse ID: <strong>#{article.id}</strong></span>
+            <span>•</span>
+            <span>{formatDate(article.published_at, language)}</span>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Article Title & Badges */}
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-gradient-brand px-3 py-1 text-xs font-semibold text-primary-foreground shadow-brand">
-              {analysis.tag}
-            </span>
-            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold bg-success/10 text-success`}>
-              Score d'importance: {analysis.importance}/100
-            </span>
-            <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-medium">
-              Sentiment: {analysis.sentiment}
-            </span>
-            <span className="rounded-md bg-destructive/10 text-destructive border border-destructive/20 px-2.5 py-0.5 text-xs font-semibold">
-              Risque: {analysis.risk}
-            </span>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        {/* Article Banner Header with Image */}
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-card">
+          <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] items-center p-6 sm:p-8">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {article.category && (
+                  <span className="rounded-full bg-gradient-brand px-3 py-1 text-xs font-bold text-primary-foreground shadow-brand">
+                    {article.category.toUpperCase()}
+                  </span>
+                )}
+                {article.source && (
+                  <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-semibold text-foreground/80">
+                    Source: {article.source}
+                  </span>
+                )}
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-foreground">
+                {article.title}
+              </h1>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground pt-2">
+                <span className="flex items-center gap-1 font-medium">
+                  <Clock className="h-3.5 w-3.5 text-primary" /> {formatDate(article.published_at, language)}
+                </span>
+                {article.author && (
+                  <span className="flex items-center gap-1 font-medium">
+                    <User className="h-3.5 w-3.5 text-primary" /> Par {article.author}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Banner Image */}
+            <div className="h-48 sm:h-56 lg:h-64 rounded-2xl overflow-hidden shadow-card border border-border relative bg-muted">
+              <img
+                src={imageUrl}
+                alt={article.title}
+                className="h-full w-full object-cover"
+              />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-            {analysis.title}
-          </h1>
         </div>
 
-        {/* Layout Grid */}
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1.8fr_1fr]">
-          {/* Main Column */}
-          <div className="space-y-8">
-            {/* AI Summary */}
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                <Brain className="h-5 w-5 text-primary" /> Synthèse stratégique par l'IA
-              </h2>
-              <p className="mt-3 text-base leading-relaxed text-foreground font-medium">
-                {analysis.summary}
-              </p>
-            </div>
+        {/* Structured 6-Section Report Layout */}
+        <div className="grid gap-8 lg:grid-cols-[1.8fr_1fr]">
+          {/* Main 6 Sections Column */}
+          <div className="space-y-6">
 
-            {/* Complete Content */}
-            <div className="prose dark:prose-invert max-w-none">
-              <h2 className="text-xl font-bold">Analyse détaillée</h2>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground font-sans">
-                {analysis.fullContent}
+            {/* SECTION 1: Description */}
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary uppercase tracking-wider">
+                <FileSearch className="h-4 w-4" />
+                <span>1. Description (Vue d'ensemble)</span>
+              </div>
+              <p className="text-base text-foreground leading-relaxed font-medium">
+                {article.summary || article.title}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground font-sans">
-                Cette analyse prend en compte le contexte concurrentiel de l'écosystème IA au Q3 2026. L'automatisation de la surveillance permet d'identifier l'accélération des cycles de développement et de documenter l'adoption de nouveaux frameworks de travail chez les acteurs clés du secteur.
-              </p>
-            </div>
+            </section>
 
-            {/* Authenticated / Visitor split for why this matters */}
-            <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-card">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
-                <Eye className="h-5 w-5 text-accent" /> Pourquoi c'est important pour vous
-              </h2>
+            {/* SECTION 2: Category & Tags */}
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary uppercase tracking-wider">
+                <Layers className="h-4 w-4" />
+                <span>2. Catégorie & Domaine d'application</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="rounded-xl bg-primary/10 border border-primary/30 px-3 py-1 text-sm font-bold text-primary">
+                  {article.category || "Intelligence Artificielle"}
+                </span>
+                {article.tags && article.tags.length > 0 && article.tags.map((tag) => (
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground border border-border">
+                    <Tag className="h-3 w-3 text-accent" /> {tag}
+                  </span>
+                ))}
+              </div>
+            </section>
 
+            {/* SECTION 3: Key Points / Summary */}
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary uppercase tracking-wider">
+                <Brain className="h-4 w-4" />
+                <span>3. Points Clés / Résumé Synthétique</span>
+              </div>
+              <ul className="space-y-2.5">
+                {summarySentences.length > 0 ? (
+                  summarySentences.map((sentence, idx) => (
+                    <li key={idx} className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                      <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                      <span>{sentence}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="flex items-start gap-2.5 text-sm text-foreground leading-relaxed">
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                    <span>{article.summary || article.title}</span>
+                  </li>
+                )}
+              </ul>
+            </section>
+
+            {/* SECTION 4: Analysis */}
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary uppercase tracking-wider">
+                <FileText className="h-4 w-4" />
+                <span>4. Analyse Approfondie & Contexte</span>
+              </div>
+              <div className="prose dark:prose-invert max-w-none text-sm text-muted-foreground leading-relaxed font-sans space-y-3">
+                {article.content ? (
+                  <p>{article.content}</p>
+                ) : (
+                  <p>
+                    L'analyse détaillée du rapport s'appuie sur le pipeline de surveillance automatisée VeillIA. Les signaux faibles détectés démontrent une accélération stratégique dans le secteur de l'intelligence artificielle et confirment les tendances d'adoption auprès des acteurs industriels.
+                  </p>
+                )}
+              </div>
+            </section>
+
+            {/* SECTION 5: Impact / Insights */}
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary uppercase tracking-wider">
+                <Eye className="h-4 w-4" />
+                <span>5. Impacts & Insights Clés</span>
+              </div>
               {!isAuthenticated ? (
-                // Visitor Locked View
-                <div className="relative mt-4">
-                  <div className="pointer-events-none select-none blur-xs">
-                    <p className="text-sm text-muted-foreground">
-                      Cette annonce modifie profondément les coûts d'intégration de votre framework actuel et vous oblige à réévaluer les contrats de licence SaaS que vous utilisez pour vos clients finaux dans le domaine de la technologie.
-                    </p>
+                <div className="relative mt-2">
+                  <div className="pointer-events-none select-none blur-xs text-sm text-muted-foreground">
+                    {t("analysis_locked_placeholder")}
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/60 text-center p-4">
                     <Lock className="h-6 w-6 text-muted-foreground animate-bounce" />
-                    <span className="mt-2 text-xs font-semibold text-muted-foreground">Connectez-vous pour débloquer l'analyse d'impact personnalisée</span>
+                    <span className="mt-2 text-xs font-semibold text-muted-foreground">{t("analysis_locked_impact")}</span>
                   </div>
                 </div>
               ) : (
-                // Authenticated Unlocked View
-                <div className="mt-3 rounded-xl bg-accent/5 p-4 border border-accent/20">
-                  <div className="text-xs font-bold uppercase tracking-wider text-accent">Impact profil — {user?.jobTitle || "Membre"}</div>
-                  <p className="mt-2 text-sm leading-relaxed text-foreground">
-                    {tailoredImpact}
+                <div className="rounded-xl bg-accent/5 p-4 border border-accent/20 space-y-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-accent">
+                    {t("analysis_impact_profile")} — {user?.jobTitle || "Membre VeillIA"}
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed font-medium">
+                    {article.summary || "Cet événement stratégique modifie le paysage concurentiel et offre des opportunités directes de valorisation et de rationalisation des processus IA."}
                   </p>
                 </div>
               )}
-            </div>
+            </section>
 
-            {/* AI Q&A Chat */}
+            {/* SECTION 6: Sources */}
+            <section className="rounded-2xl border border-border bg-card p-6 shadow-card space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-primary uppercase tracking-wider">
+                <Globe className="h-4 w-4" />
+                <span>6. Sources & Références Officiellement Identifiées</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/40 p-4 border border-border text-xs">
+                <div className="space-y-1">
+                  <div className="font-bold text-foreground">{article.source || "Source Vérifiée VeillIA"}</div>
+                  <div className="text-muted-foreground">Publié le : {formatDate(article.published_at, language)}</div>
+                </div>
+                {article.url && (
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground shadow hover:opacity-90 transition"
+                  >
+                    Consulter la source originale <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            </section>
+
+            {/* AI Q&A Assistant */}
             <div className="rounded-2xl border border-border bg-card shadow-card">
               <div className="flex items-center justify-between border-b border-border p-4">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
-                  <HelpCircle className="h-4 w-4 text-primary" /> Poser des questions à l'IA
+                  <HelpCircle className="h-4 w-4 text-primary" /> {t("analysis_ask_ai")}
                 </h3>
                 {!isAuthenticated && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
-                    <Lock className="h-3 w-3" /> Membres uniquement
+                    <Lock className="h-3 w-3" /> {t("analysis_members_only")}
                   </span>
                 )}
               </div>
 
               {!isAuthenticated ? (
-                // Locked Chat Box for Visitors
-                <div className="relative h-64 bg-background/50">
+                <div className="relative h-56 bg-background/50">
                   <div className="pointer-events-none select-none flex h-full flex-col justify-between p-4 blur-[2px]">
                     <div className="space-y-3">
                       <div className="max-w-[75%] rounded-2xl bg-muted p-3 text-xs text-muted-foreground">
-                        Quel est l'impact de cette annonce sur la souveraineté ?
+                        {t("analysis_chat_placeholder")}
                       </div>
-                      <div className="ml-auto max-w-[75%] rounded-2xl bg-primary/10 p-3 text-xs text-primary">
-                        L'impact principal réside dans l'autonomie d'hébergement...
-                      </div>
-                    </div>
-                    <div className="flex gap-2 border-t border-border pt-2">
-                      <div className="flex-1 rounded-xl bg-background px-3 py-2 text-xs text-muted-foreground/40">Écrivez votre question...</div>
-                      <div className="rounded-xl bg-muted p-2 text-muted-foreground/30"><Send className="h-4 w-4" /></div>
                     </div>
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/65 text-center p-4">
                     <Lock className="h-6 w-6 text-muted-foreground" />
-                    <span className="mt-2 text-sm font-semibold text-foreground">Sign in to unlock</span>
-                    <p className="mt-1 text-xs text-muted-foreground max-w-xs">Rejoignez VeillIA pour interroger l'IA en temps réel sur cet article.</p>
+                    <span className="mt-2 text-sm font-semibold text-foreground">{t("analysis_chat_sign_in")}</span>
                   </div>
                 </div>
               ) : (
-                // Active Interactive Chat for Users
                 <div className="flex h-80 flex-col bg-background/30">
-                  {/* Message History */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     {messages.map((m, idx) => (
                       <div
@@ -400,24 +488,35 @@ export function AnalysisPage() {
                         <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${m.sender === "user" ? "bg-gradient-brand text-primary-foreground" : "bg-muted text-foreground"}`}>
                           {m.sender === "user" ? <User className="h-3 w-3" /> : <Brain className="h-3 w-3 text-primary" />}
                         </div>
-                        <div className={`rounded-2xl px-3.5 py-2 text-sm ${m.sender === "user" ? "bg-gradient-brand text-primary-foreground shadow-brand" : "bg-card border border-border text-foreground"}`}>
+                        <div className={`rounded-2xl px-3.5 py-2 text-sm ${m.sender === "user" ? "bg-gradient-brand text-primary-foreground shadow-brand" : m.notFound ? "bg-destructive/5 border border-destructive/20 text-muted-foreground" : "bg-card border border-border text-foreground"}`}>
                           {m.text}
                         </div>
                       </div>
                     ))}
+                    {chatLoading && (
+                      <div className="flex gap-2.5 max-w-[80%]">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                          <Brain className="h-3 w-3 text-primary animate-pulse" />
+                        </div>
+                        <div className="rounded-2xl bg-card border border-border px-3.5 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                          <Loader2 className="h-3 w-3 animate-spin" /> {t("analysis_chat_loading")}
+                        </div>
+                      </div>
+                    )}
                     <div ref={chatEndRef} />
                   </div>
-                  {/* Chat Input */}
                   <form onSubmit={handleSendQuestion} className="border-t border-border bg-card p-3 flex gap-2">
                     <input
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Demandez par exemple: 'Quel impact sur l'open source ?'"
-                      className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:border-ring"
+                      disabled={chatLoading}
+                      placeholder={t("analysis_chat_placeholder")}
+                      className="flex-1 rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:border-ring disabled:opacity-50"
                     />
                     <button
                       type="submit"
-                      className="rounded-xl bg-gradient-brand p-2 text-primary-foreground shadow-brand hover:opacity-95"
+                      disabled={chatLoading || !chatInput.trim()}
+                      className="rounded-xl bg-gradient-brand p-2 text-primary-foreground shadow-brand hover:opacity-95 disabled:opacity-40"
                     >
                       <Send className="h-4 w-4" />
                     </button>
@@ -427,40 +526,31 @@ export function AnalysisPage() {
             </div>
           </div>
 
-          {/* Right Rail (Actions & Recommendations) */}
+          {/* Right Rail */}
           <aside className="space-y-6">
-            {/* Authenticated Actions */}
+            {/* Strategic Actions */}
             <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-sans">Actions stratégiques</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                {t("analysis_strategic_actions")}
+              </h3>
 
               {!isAuthenticated ? (
-                // Locked actions with CTA
                 <div className="space-y-3">
-                  <div className="space-y-2 pointer-events-none select-none blur-[1px]">
-                    <div className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground bg-background">
-                      <span>Favoris</span><Lock className="h-3 w-3" />
-                    </div>
-                    <div className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground bg-background">
-                      <span>Ajouter à la watchlist</span><Lock className="h-3 w-3" />
-                    </div>
-                  </div>
-                  {/* Public CTA Card */}
                   <div className="rounded-xl bg-gradient-brand p-4 text-center text-primary-foreground shadow-brand">
                     <Sparkles className="mx-auto h-5 w-5 text-accent animate-pulse" />
-                    <h4 className="mt-2 text-sm font-bold">Débloquez VeillIA</h4>
+                    <h4 className="mt-2 text-sm font-bold">{t("analysis_unlock_title")}</h4>
                     <p className="mt-1 text-xs text-primary-foreground/90 leading-relaxed">
-                      Créez un compte pour suivre ces sujets, recevoir des alertes par e-mail et exporter des rapports IA.
+                      {t("analysis_unlock_desc")}
                     </p>
                     <Link
                       to="/auth/signup"
                       className="mt-3 block rounded-lg bg-background py-2 text-xs font-bold text-primary shadow hover:bg-card text-center"
                     >
-                      S'inscrire gratuitement
+                      {t("analysis_signup_cta")}
                     </Link>
                   </div>
                 </div>
               ) : (
-                // Active Actions
                 <div className="space-y-2">
                   <button
                     onClick={handleSave}
@@ -468,7 +558,7 @@ export function AnalysisPage() {
                   >
                     <span className="flex items-center gap-1.5">
                       {saved ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4" />}
-                      {saved ? "Sauvegardé" : "Enregistrer dans mes favoris"}
+                      {saved ? t("analysis_saved") : t("analysis_save")}
                     </span>
                   </button>
 
@@ -478,17 +568,17 @@ export function AnalysisPage() {
                       className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"
                     >
                       <span className="flex items-center gap-1.5">
-                        <Plus className="h-4 w-4" /> Ajouter à une watchlist
+                        <Plus className="h-4 w-4" /> {t("analysis_add_watchlist")}
                       </span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
 
                     {showWL && (
                       <div className="absolute right-0 top-full z-30 mt-1 w-full rounded-xl border border-border bg-popover p-2 shadow-card">
-                        <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase">Mes watchlists</div>
+                        <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase">{t("analysis_my_wl")}</div>
                         <div className="max-h-32 overflow-y-auto">
                           {lists.length === 0 && (
-                            <div className="px-2 py-1.5 text-xs text-muted-foreground">Aucune watchlist active.</div>
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("analysis_no_wl")}</div>
                           )}
                           {lists.map((w) => (
                             <button
@@ -505,17 +595,19 @@ export function AnalysisPage() {
                             <input
                               value={newWLName}
                               onChange={(e) => setNewWLName(e.target.value)}
-                              placeholder="Nom..."
+                              placeholder={t("analysis_wl_name_placeholder")}
                               className="flex-1 rounded border border-input bg-background px-1.5 py-1 text-[11px] outline-none"
                             />
-                            <button onClick={handleCreateWatchlist} className="rounded bg-primary px-2 py-1 text-[10px] text-primary-foreground font-bold">Créer</button>
+                            <button onClick={handleCreateWatchlist} className="rounded bg-primary px-2 py-1 text-[10px] text-primary-foreground font-bold">
+                              {t("analysis_create_wl")}
+                            </button>
                           </div>
                         ) : (
                           <button
                             onClick={() => setCreatingWL(true)}
                             className="mt-1 w-full border-t border-border pt-1 px-2 py-1 text-left text-[11px] font-semibold text-primary hover:text-primary/80"
                           >
-                            + Nouvelle watchlist
+                            {t("analysis_new_wl")}
                           </button>
                         )}
                       </div>
@@ -528,7 +620,7 @@ export function AnalysisPage() {
                   >
                     <span className="flex items-center gap-1.5">
                       {alertCreated ? <Check className="h-4 w-4 text-primary" /> : <Bell className="h-4 w-4" />}
-                      Alerte sur ce sujet
+                      {alertCreated ? t("analysis_alert_created") : t("analysis_alert")}
                     </span>
                   </button>
 
@@ -538,60 +630,37 @@ export function AnalysisPage() {
                   >
                     <span className="flex items-center gap-1.5">
                       {inReport ? <Check className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4" />}
-                      Ajouter au rapport hebdomadaire
+                      {inReport ? t("analysis_added_report") : t("analysis_add_report")}
                     </span>
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Why Recommended & Watchlist matching */}
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-sans">Source de la recommandation</h3>
-              {!isAuthenticated ? (
-                // Visitor Locked State
-                <div className="relative">
-                  <div className="pointer-events-none select-none blur-[1px] text-xs text-muted-foreground leading-relaxed">
-                    Cet article correspond à vos watchlists sur Mistral AI et OpenAI dans l'écosystème souverain européen.
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center bg-card/60">
-                    <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
-                      <Lock className="h-3 w-3" /> Connectez-vous pour voir
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                // Unlocked matching why
-                <div className="text-xs text-foreground leading-relaxed flex items-start gap-2 bg-muted/40 p-3 rounded-xl border border-border">
-                  <TrendingUp className="h-4 w-4 shrink-0 text-success" />
-                  <span>{analysis.whyRecommended}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Related articles */}
+            {/* Related Articles */}
             <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-sans">Analyses connexes</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                {t("analysis_related")}
+              </h3>
               <div className="space-y-3">
-                {Object.keys(ARTICLE_ANALYSES)
-                  .filter((k) => k !== analysisKey)
-                  .map((k) => {
-                    const related = ARTICLE_ANALYSES[k];
-                    return (
-                      <div key={k} className="group relative block rounded-xl border border-border bg-background p-3 transition hover:border-accent/40">
-                        <div className="text-[10px] font-bold text-accent uppercase">{related.tag}</div>
-                        <h4 className="mt-1 text-xs font-semibold leading-snug group-hover:text-primary transition line-clamp-2">
-                          <Link to="/analyses/$id" params={{ id: encodeURIComponent(related.title) }}>
-                            {related.title}
-                          </Link>
-                        </h4>
-                        <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-                          <span>{related.source}</span>
-                          <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {related.readTime} min</span>
-                        </div>
+                {relatedArticles.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("analysis_no_related")}</p>
+                ) : (
+                  relatedArticles.map((rel) => (
+                    <div key={rel.id} className="group relative block rounded-xl border border-border bg-background p-3 transition hover:border-accent/40">
+                      <div className="text-[10px] font-bold text-accent uppercase">{rel.category}</div>
+                      <h4 className="mt-1 text-xs font-semibold leading-snug group-hover:text-primary transition line-clamp-2">
+                        <Link to="/analyses/$id" params={{ id: String(rel.id) }}>
+                          {rel.title}
+                        </Link>
+                      </h4>
+                      <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>{rel.source}</span>
+                        <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" /> {t("analysis_min_read")}</span>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </aside>
@@ -600,5 +669,3 @@ export function AnalysisPage() {
     </SiteLayout>
   );
 }
-
-export default AnalysisPage;

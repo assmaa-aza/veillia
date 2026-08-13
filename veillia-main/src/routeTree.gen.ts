@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WatchlistsRouteImport } from './routes/watchlists'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MonRapportRouteImport } from './routes/mon-rapport'
 import { Route as DecouvrirRouteImport } from './routes/decouvrir'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AProposRouteImport } from './routes/a-propos'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
@@ -31,6 +33,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MonRapportRoute = MonRapportRouteImport.update({
+  id: '/mon-rapport',
+  path: '/mon-rapport',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DecouvrirRoute = DecouvrirRouteImport.update({
   id: '/decouvrir',
   path: '/decouvrir',
@@ -39,6 +46,11 @@ const DecouvrirRoute = DecouvrirRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AProposRoute = AProposRouteImport.update({
@@ -80,8 +92,10 @@ const AnalysesIdRoute = AnalysesIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/decouvrir': typeof DecouvrirRoute
+  '/mon-rapport': typeof MonRapportRoute
   '/onboarding': typeof OnboardingRoute
   '/watchlists': typeof WatchlistsRoute
   '/analyses/$id': typeof AnalysesIdRoute
@@ -93,8 +107,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/decouvrir': typeof DecouvrirRoute
+  '/mon-rapport': typeof MonRapportRoute
   '/onboarding': typeof OnboardingRoute
   '/watchlists': typeof WatchlistsRoute
   '/analyses/$id': typeof AnalysesIdRoute
@@ -107,8 +123,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/decouvrir': typeof DecouvrirRoute
+  '/mon-rapport': typeof MonRapportRoute
   '/onboarding': typeof OnboardingRoute
   '/watchlists': typeof WatchlistsRoute
   '/analyses/$id': typeof AnalysesIdRoute
@@ -122,8 +140,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/a-propos'
+    | '/admin'
     | '/dashboard'
     | '/decouvrir'
+    | '/mon-rapport'
     | '/onboarding'
     | '/watchlists'
     | '/analyses/$id'
@@ -135,8 +155,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/a-propos'
+    | '/admin'
     | '/dashboard'
     | '/decouvrir'
+    | '/mon-rapport'
     | '/onboarding'
     | '/watchlists'
     | '/analyses/$id'
@@ -148,8 +170,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/a-propos'
+    | '/admin'
     | '/dashboard'
     | '/decouvrir'
+    | '/mon-rapport'
     | '/onboarding'
     | '/watchlists'
     | '/analyses/$id'
@@ -162,8 +186,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AProposRoute: typeof AProposRoute
+  AdminRoute: typeof AdminRoute
   DashboardRoute: typeof DashboardRoute
   DecouvrirRoute: typeof DecouvrirRoute
+  MonRapportRoute: typeof MonRapportRoute
   OnboardingRoute: typeof OnboardingRoute
   WatchlistsRoute: typeof WatchlistsRoute
   AnalysesIdRoute: typeof AnalysesIdRoute
@@ -189,6 +215,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mon-rapport': {
+      id: '/mon-rapport'
+      path: '/mon-rapport'
+      fullPath: '/mon-rapport'
+      preLoaderRoute: typeof MonRapportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/decouvrir': {
       id: '/decouvrir'
       path: '/decouvrir'
@@ -201,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/a-propos': {
@@ -258,8 +298,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AProposRoute: AProposRoute,
+  AdminRoute: AdminRoute,
   DashboardRoute: DashboardRoute,
   DecouvrirRoute: DecouvrirRoute,
+  MonRapportRoute: MonRapportRoute,
   OnboardingRoute: OnboardingRoute,
   WatchlistsRoute: WatchlistsRoute,
   AnalysesIdRoute: AnalysesIdRoute,

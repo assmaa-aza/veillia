@@ -92,9 +92,13 @@ const timeline = [
   { icon: Lightbulb, label: "Deliver insights", desc: "Intelligence livrée claire" },
 ];
 
+import { useLanguage } from "@/hooks/use-language";
+
 function APropos() {
-  const hero = useReveal<HTMLDivElement>();
-  const statsRef = useReveal<HTMLDivElement>();
+  const { ref: heroRef, shown: heroShown } = useReveal<HTMLDivElement>();
+  const { ref: gridRef, shown: gridShown } = useReveal<HTMLDivElement>();
+  const { t } = useLanguage();
+
   const valuesRef = useReveal<HTMLDivElement>();
   const missionRef = useReveal<HTMLDivElement>();
   const timelineRef = useReveal<HTMLDivElement>();
@@ -111,9 +115,9 @@ function APropos() {
           </div>
 
           <div
-            ref={hero.ref}
+            ref={heroRef}
             className={`grid items-center gap-12 lg:grid-cols-2 lg:gap-16 transition-all duration-700 ${
-              hero.shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+              heroShown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
           >
             <div className="space-y-8">
@@ -162,9 +166,9 @@ function APropos() {
         {/* Stats */}
         <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
           <div
-            ref={statsRef.ref}
+            ref={gridRef}
             className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-all duration-700 delay-100 ${
-              statsRef.shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+              gridShown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
           >
             {stats.map((stat) => (
@@ -338,5 +342,3 @@ function APropos() {
     </SiteLayout>
   );
 }
-
-export default APropos;
