@@ -1,2 +1,16 @@
+[project]
+name = "veillia-backend"
+version = "1.0.0"
+description = "VeillIA Backend"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fastapi[standard]",
+    "requests",
+    "python-dotenv",
+    "supabase",
+    "pydantic",
+    "email-validator"
+]
+
 [tool.fastapi]
 entrypoint = "app.main:app"
